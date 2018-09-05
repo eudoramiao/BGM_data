@@ -57,7 +57,8 @@ assign_taxonomy.py -i R1seqs.trimmed2_no_chimeras.fasta_rep_set.fasta -m blast -
 
 
 #make otu table
-make_otu_table.py -i usearch61_picked_otus/R1seqs.trimmed2_no_chimeras_otus.txt -t taxonomy_blast/R1seqs.trimmed2_no_chimeras.fasta_rep_set_tax_assignments.txt -o otu_table.biom
+make_otu_table.py -i usearch61_picked_otus/R1seqs.trimmed2_no_chimeras_otus.txt -t taxonomy_blast/R1seqs.trimmed2_no_chimeras.fasta_rep_set_tax_assignments.txt -m Eudora_BGM_MappingFile_corrected.txt -o otu_table.biom
+                 
 
 #summarize taxa through plots
 summarize_taxa_through_plots.py -i otu_table.biom -o BGM_taxa_summary -m Eudora_BGM_MappingFile_corrected.txt

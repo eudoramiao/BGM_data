@@ -9,16 +9,47 @@ output:
 
 ```{r}
 library(phyloseq)
+library(ggplot2)
+library(tidyverse)
 BGM_data0 <- import_biom(BIOMfilename = "../test/BGM_R1/otu_table.biom")
 BGM_data0
 ```
 
+## Checking sequencing depth
+
+```{r}
+# Make a data frame with a column for the read counts of each sample
+sample_sum_df <- data.frame(sum = sample_sums(BGM_data0))
+
+# Histogram of sample read counts
+ggplot(sample_sum_df, aes(x = sum)) + 
+  geom_histogram(color = "black", fill = "indianred", binwidth = 2500) +
+  ggtitle("Distribution of sample sequencing depth") + 
+  xlab("Read counts") +
+  theme(axis.title.y = element_blank())
+```
+
+## Standardizing by sequencing depth
+
+```{r}
+#Standardize abundances to the median sequencing depth
+total <- median(sample_sums(BGM_data0))
+standf <- function(x, t=total) round(t * (x/sum(x)))
+
+BGM_data0.std <- transform_sample_counts(BGM_data0, standf)
+
+#Filter taxa with cutoff 3.0 Coefficient of Variation
+#BGM_data0.stdf <- filter_taxa(BGM_data0.std, function(x) sd(x)/mean(x) > 3.0, TRUE)
+```
+
+## Filtering "no hits"
+
 ```{r}
 #Renaming taxonomy levels on tax_table
-colnames(tax_table(BGM_data0)) <- c("Kingdom", "Phylum", "Class","Order", "Family", "Genus", "Species")
+colnames(tax_table(BGM_data0.std)) <- c("Kingdom", "Phylum", "Class","Order", "Family", "Genus", "Species")
 
 #Filtering no hit at Kingdom level
-BGM_data <- subset_taxa(BGM_data0, Kingdom != "No blast hit")
+BGM_data <- subset_taxa(BGM_data0.std, Kingdom != "No blast hit")
 ```
 
 # Bar plot
@@ -27,8 +58,36 @@ BGM_data <- subset_taxa(BGM_data0, Kingdom != "No blast hit")
 #summarizing by tax rank
 BGM.order <- tax_glom(BGM_data, "Order")
 
-plot_bar(BGM_data, fill = "Order")
+plot_bar(BGM_data, fill = "Order", x = "Group")
 
-plot_bar(BGM.order, fill = "Order")
+plot_bar(BGM.order, fill = "Order", x = "Group")
+```
+
+## Subsetting datasets by study
+```{r}
+#Silvehill mine dataset
+SH_data <- subset_samples(BGM_data, grepl("SH", sample_data(BGM_data)$Group))
+
+
+#BGM mine dataset
+BGM_data.f <- subset_samples(BGM_data, !grepl("SH", sample_data(BGM_data)$Group))
+```
+
+```{r}
+#Creating data frame from phyloseq object
+BGM.df <- psmelt(BGM_data.f)
+
+#Sumarize data by site 
+test <- BGM.df %>% group_by(Genus) %>% summarise(sum(Abundance))
+
+#plot by relative abundance
+#Plot
+library(RColorBrewer)
+pal <- colorRampPalette(brewer.pal(10, "Paired"))
+
+(Genus <- ggplot(data = BGM.df, aes(Group, Abundance, fill = Genus)) +
+  geom_bar(stat = "identity", position = position_fill()) + coord_flip() +
+    scale_fill_manual(values = pal(15)) + 
+   theme(text = element_text(size = 15)) + theme_gray())
 ```
 
