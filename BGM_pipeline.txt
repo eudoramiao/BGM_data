@@ -62,3 +62,5 @@ make_otu_table.py -i usearch61_picked_otus/R1seqs.trimmed2_no_chimeras_otus.txt 
 
 #summarize taxa through plots
 summarize_taxa_through_plots.py -i otu_table.biom -o BGM_taxa_summary -m Eudora_BGM_MappingFile_corrected.txt
+
+filter_taxa_from_otu_table.py -i otu_table.biom -o otu_table_fungi.biom -p k__Fungi 

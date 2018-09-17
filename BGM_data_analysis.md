@@ -3,6 +3,8 @@ title: "Eudora's BGM analysis"
 output:
   html_document: 
     keep_md: TRUE
+editor_options: 
+  chunk_output_type: console
 ---
 
 # Importing data and pre-processing
@@ -10,7 +12,29 @@ output:
 
 ```r
 library(phyloseq)
-BGM_data0 <- import_biom(BIOMfilename = "../test/BGM_R1/otu_table.biom")
+library(ggplot2)
+library(tidyverse)
+```
+
+```
+## ── Attaching packages ──────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.2.1 ──
+```
+
+```
+## ✔ tibble  1.4.2     ✔ purrr   0.2.5
+## ✔ tidyr   0.8.1     ✔ dplyr   0.7.6
+## ✔ readr   1.1.1     ✔ stringr 1.3.1
+## ✔ tibble  1.4.2     ✔ forcats 0.3.0
+```
+
+```
+## ── Conflicts ─────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+## ✖ dplyr::filter() masks stats::filter()
+## ✖ dplyr::lag()    masks stats::lag()
+```
+
+```r
+BGM_data0 <- import_biom(BIOMfilename = "../test/BGM_R1_q10/otu_table_fungi.biom")
 ```
 
 ```
@@ -24,17 +48,51 @@ BGM_data0
 
 ```
 ## phyloseq-class experiment-level object
-## otu_table()   OTU Table:         [ 27292 taxa and 52 samples ]
-## tax_table()   Taxonomy Table:    [ 27292 taxa by 7 taxonomic ranks ]
+## otu_table()   OTU Table:         [ 6439 taxa and 53 samples ]
+## sample_data() Sample Data:       [ 53 samples by 7 sample variables ]
+## tax_table()   Taxonomy Table:    [ 6439 taxa by 7 taxonomic ranks ]
 ```
+
+## Checking sequencing depth
+
+
+```r
+# Make a data frame with a column for the read counts of each sample
+sample_sum_df <- data.frame(sum = sample_sums(BGM_data0))
+
+# Histogram of sample read counts
+ggplot(sample_sum_df, aes(x = sum)) + 
+  geom_histogram(color = "black", fill = "indianred", binwidth = 2500) +
+  ggtitle("Distribution of sample sequencing depth") + 
+  xlab("Read counts") +
+  theme(axis.title.y = element_blank())
+```
+
+![](BGM_data_analysis_files/figure-html/unnamed-chunk-2-1.png)<!-- -->
+
+## Standardizing by sequencing depth
+
+
+```r
+#Standardize abundances to the median sequencing depth
+total <- median(sample_sums(BGM_data0))
+standf <- function(x, t=total) round(t * (x/sum(x)))
+
+BGM_data0.std <- transform_sample_counts(BGM_data0, standf)
+
+#Filter taxa with cutoff 3.0 Coefficient of Variation
+#BGM_data0.stdf <- filter_taxa(BGM_data0.std, function(x) sd(x)/mean(x) > 3.0, TRUE)
+```
+
+## Filtering "no hits"
 
 
 ```r
 #Renaming taxonomy levels on tax_table
-colnames(tax_table(BGM_data0)) <- c("Kingdom", "Phylum", "Class","Order", "Family", "Genus", "Species")
+colnames(tax_table(BGM_data0.std)) <- c("Kingdom", "Phylum", "Class","Order", "Family", "Genus", "Species")
 
 #Filtering no hit at Kingdom level
-BGM_data <- subset_taxa(BGM_data0, Kingdom != "No blast hit")
+BGM_data <- subset_taxa(BGM_data0.std, Kingdom != "No blast hit")
 ```
 
 # Bar plot
@@ -42,16 +100,141 @@ BGM_data <- subset_taxa(BGM_data0, Kingdom != "No blast hit")
 
 ```r
 #summarizing by tax rank
-BGM.order <- tax_glom(BGM_data, "Order")
+BGM.order <- tax_glom(BGM_data, "Phylum")
 
-plot_bar(BGM_data, fill = "Order")
+plot_bar(BGM_data, fill = "Phylum", x = "Group")
 ```
 
-![](BGM_data_analysis_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
+![](BGM_data_analysis_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
 
 ```r
-plot_bar(BGM.order, fill = "Order")
+plot_bar(BGM.order, fill = "Phylum", x = "Group")
 ```
 
-![](BGM_data_analysis_files/figure-html/unnamed-chunk-3-2.png)<!-- -->
+![](BGM_data_analysis_files/figure-html/unnamed-chunk-5-2.png)<!-- -->
+
+```r
+#Plot by family
+BGM.fam <- tax_glom(BGM_data, "Class")
+plot_bar(BGM.fam, fill = "Class", x = "Group")
+```
+
+![](BGM_data_analysis_files/figure-html/unnamed-chunk-5-3.png)<!-- -->
+
+## Subsetting datasets by study
+
+```r
+#Silvehill mine dataset
+SH_data <- subset_samples(BGM_data, grepl("SH", sample_data(BGM_data)$Group))
+
+
+#BGM mine dataset
+BGM_data.f <- subset_samples(BGM_data, !grepl("SH", sample_data(BGM_data)$Group))
+```
+
+# Brewer Gold Mine study
+
+
+```r
+TopNOTUs <- function(sample,N) {
+  names(sort(taxa_sums(sample), TRUE)[1:N])
+}
+
+
+#Creating data frame from phyloseq object
+top.BGM <- TopNOTUs(BGM_data.f, 50)
+BGM.df <- prune_taxa(top.BGM, BGM_data.f) %>% psmelt()
+
+#Sumarize data by site 
+#test <- BGM.df %>% group_by(Genus) %>% summarise(sum(Abundance))
+
+#plot by relative abundance
+#Plot
+library(RColorBrewer)
+pal <- colorRampPalette((brewer.pal(12, "Paired")))
+
+(Genus_soil <- ggplot(data = filter(BGM.df, Description == "Soil"), aes(Group, Abundance, fill = Genus)) +
+  geom_bar(stat = "identity", position = position_fill()) + coord_flip() +
+    scale_fill_manual(values = (pal(24))) + 
+    facet_grid(~ Description, drop = TRUE) +
+   theme(text = element_text(size = 15)) + theme_gray())
+```
+
+![](BGM_data_analysis_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
+
+```r
+(Genus_root <- ggplot(data = filter(BGM.df, Description == "Root"), aes(Group, Abundance, fill = Genus)) +
+  geom_bar(stat = "identity", position = position_fill()) + coord_flip() +
+    scale_fill_manual(values = pal(24)) + 
+    facet_grid(~ Description, drop = TRUE) +
+   theme(text = element_text(size = 15)) + theme_gray())
+```
+
+![](BGM_data_analysis_files/figure-html/unnamed-chunk-7-2.png)<!-- -->
+
+```r
+(Class_soil <-ggplot(data = filter(BGM.df, Description == "Soil"), aes(Group, Abundance, fill = Class)) +
+  geom_bar(stat = "identity", position = position_fill()) + coord_flip() +
+    scale_fill_manual(values = (pal(24))) + 
+    facet_grid(~ Description, drop = TRUE) +
+   theme(text = element_text(size = 15)) + theme_gray())
+```
+
+![](BGM_data_analysis_files/figure-html/unnamed-chunk-7-3.png)<!-- -->
+
+```r
+(Class_root <-ggplot(data = filter(BGM.df, Description == "Root"), aes(Group, Abundance, fill = Class)) +
+  geom_bar(stat = "identity", position = position_fill()) + coord_flip() +
+    scale_fill_manual(values = (pal(24))) + 
+    facet_grid(~ Description, drop = TRUE) +
+   theme(text = element_text(size = 15)) + theme_gray())
+```
+
+![](BGM_data_analysis_files/figure-html/unnamed-chunk-7-4.png)<!-- -->
+
+
+```r
+#New variable
+sample_data(BGM_data.f)$site_type <- str_sub(sample_data(BGM_data.f)$Site, 1,2)
+
+library(metacoder)
+#Top 100 OTUs
+
+top100.BGM <- TopNOTUs(BGM_data.f, 100)
+top100.BGM.ps <- prune_taxa(top100.BGM, BGM_data.f)
+top100.BGM.ps <- merge_samples(top100.BGM.ps, "Group")
+
+#Converting to metacoder
+obj <- parse_phyloseq(top100.BGM.ps)
+
+# Convert counts to proportions
+obj$data$otu_table <- calc_obs_props(obj,
+                                     data = "otu_table",
+                                     cols = obj$data$sam_data$sample_ids)
+# Calculate per-taxon proportions
+obj$data$tax_table <- calc_taxon_abund(obj,
+                                       data = "otu_table",
+                                       cols = obj$data$sam_data$sample_ids)
+
+#Compare treatments
+obj$data$diff_table <- compare_groups(obj,
+                                          data = "tax_table",
+                                          cols = obj$data$sam_data$sample_ids,
+                                          groups = obj$data$sam_data$site_type)
+
+#Tree visual
+set.seed(1)
+Tree1 <- metacoder::heat_tree(taxa::filter_taxa(obj, taxon_names == "c__Agaricomycetes", subtaxa = TRUE),
+          node_size = n_obs, 
+          node_label = taxon_names,
+          node_color = log2_median_ratio,
+          node_color_range = c("#a6611a","#dfc27d","#bdbdbd","#80cdc1","#018571"), 
+          node_color_trans = "linear",
+          node_label_max = 120,
+          node_color_interval = c(-1, 1),
+          edge_color_interval = c(-1, 1),
+          node_size_axis_label = "Number of OTUs",
+          node_color_axis_label = "Log2 ratio median proportions",
+          initial_layout = "reingold-tilford", layout = "davidson-harel")
+```
 
