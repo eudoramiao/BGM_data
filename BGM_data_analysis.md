@@ -14,35 +14,11 @@ editor_options:
 library(phyloseq)
 library(ggplot2)
 library(tidyverse)
-```
+library(RColorBrewer)
+library(cowplot)
+library(metacoder)
 
-```
-## ── Attaching packages ──────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.2.1 ──
-```
-
-```
-## ✔ tibble  1.4.2     ✔ purrr   0.2.5
-## ✔ tidyr   0.8.1     ✔ dplyr   0.7.6
-## ✔ readr   1.1.1     ✔ stringr 1.3.1
-## ✔ tibble  1.4.2     ✔ forcats 0.3.0
-```
-
-```
-## ── Conflicts ─────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
-## ✖ dplyr::filter() masks stats::filter()
-## ✖ dplyr::lag()    masks stats::lag()
-```
-
-```r
-BGM_data0 <- import_biom(BIOMfilename = "../test/BGM_R1_q10/otu_table_fungi.biom")
-```
-
-```
-## Warning in strsplit(conditionMessage(e), "\n"): input string 1 is invalid
-## in this locale
-```
-
-```r
+BGM_data0 <- import_biom(BIOMfilename = "otu_table_fungi.biom")
 BGM_data0
 ```
 
@@ -65,7 +41,7 @@ ggplot(sample_sum_df, aes(x = sum)) +
   geom_histogram(color = "black", fill = "indianred", binwidth = 2500) +
   ggtitle("Distribution of sample sequencing depth") + 
   xlab("Read counts") +
-  theme(axis.title.y = element_blank())
+  theme_gray() + theme(axis.title.y = element_blank())
 ```
 
 ![](BGM_data_analysis_files/figure-html/unnamed-chunk-2-1.png)<!-- -->
@@ -95,7 +71,7 @@ colnames(tax_table(BGM_data0.std)) <- c("Kingdom", "Phylum", "Class","Order", "F
 BGM_data <- subset_taxa(BGM_data0.std, Kingdom != "No blast hit")
 ```
 
-# Bar plot
+# Taxa abudance at different rank levels
 
 
 ```r
@@ -105,13 +81,13 @@ BGM.order <- tax_glom(BGM_data, "Phylum")
 plot_bar(BGM_data, fill = "Phylum", x = "Group")
 ```
 
-![](BGM_data_analysis_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
+<img src="BGM_data_analysis_files/figure-html/unnamed-chunk-5-1.png" style="display: block; margin: auto;" />
 
 ```r
 plot_bar(BGM.order, fill = "Phylum", x = "Group")
 ```
 
-![](BGM_data_analysis_files/figure-html/unnamed-chunk-5-2.png)<!-- -->
+<img src="BGM_data_analysis_files/figure-html/unnamed-chunk-5-2.png" style="display: block; margin: auto;" />
 
 ```r
 #Plot by family
@@ -119,7 +95,7 @@ BGM.fam <- tax_glom(BGM_data, "Class")
 plot_bar(BGM.fam, fill = "Class", x = "Group")
 ```
 
-![](BGM_data_analysis_files/figure-html/unnamed-chunk-5-3.png)<!-- -->
+<img src="BGM_data_analysis_files/figure-html/unnamed-chunk-5-3.png" style="display: block; margin: auto;" />
 
 ## Subsetting datasets by study
 
@@ -133,6 +109,8 @@ BGM_data.f <- subset_samples(BGM_data, !grepl("SH", sample_data(BGM_data)$Group)
 ```
 
 # Brewer Gold Mine study
+
+## Relative abudance of genus and class in BGM soil and root samples
 
 
 ```r
@@ -150,59 +128,60 @@ BGM.df <- prune_taxa(top.BGM, BGM_data.f) %>% psmelt()
 
 #plot by relative abundance
 #Plot
-library(RColorBrewer)
-pal <- colorRampPalette((brewer.pal(12, "Paired")))
+pal <- colorRampPalette((brewer.pal(10, "Paired")))
 
-(Genus_soil <- ggplot(data = filter(BGM.df, Description == "Soil"), aes(Group, Abundance, fill = Genus)) +
+Genus_soil <- ggplot(data = filter(BGM.df, Description == "Soil"), aes(Group, Abundance, fill = Genus)) +
   geom_bar(stat = "identity", position = position_fill()) + coord_flip() +
-    scale_fill_manual(values = (pal(24))) + 
+    scale_fill_manual(values = (rev(pal(24)))) + 
+    guides(fill = guide_legend(reverse = TRUE, ncol = 1, keyheight = 0.8)) +
     facet_grid(~ Description, drop = TRUE) +
-   theme(text = element_text(size = 15)) + theme_gray())
+   theme(text = element_text(size = 15)) + theme_gray()
+
+
+Genus_root <- ggplot(data = filter(BGM.df, Description == "Root"), aes(Group, Abundance, fill = Genus)) +
+  geom_bar(stat = "identity", position = position_fill()) + coord_flip() +
+    scale_fill_manual(values = rev(pal(24))) + 
+    guides(fill = FALSE) +
+    facet_grid(~ Description, drop = TRUE) +
+   theme(text = element_text(size = 15)) + theme_gray()
+
+plot_grid(Genus_root, Genus_soil, align = "h", rel_widths = c(1,1.2))
 ```
 
-![](BGM_data_analysis_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
+<img src="BGM_data_analysis_files/figure-html/unnamed-chunk-7-1.png" style="display: block; margin: auto;" />
 
 ```r
-(Genus_root <- ggplot(data = filter(BGM.df, Description == "Root"), aes(Group, Abundance, fill = Genus)) +
+Class_soil <-ggplot(data = filter(BGM.df, Description == "Soil"), aes(Group, Abundance, fill = Class)) +
   geom_bar(stat = "identity", position = position_fill()) + coord_flip() +
-    scale_fill_manual(values = pal(24)) + 
-    facet_grid(~ Description, drop = TRUE) +
-   theme(text = element_text(size = 15)) + theme_gray())
+  scale_fill_manual(values = (pal(24))) + 
+  guides(fill = guide_legend(ncol = 1, keyheight = 0.8)) +
+  facet_grid(~ Description, drop = TRUE) +
+  theme(text = element_text(size = 15)) + theme_gray()
+
+Class_root <-ggplot(data = filter(BGM.df, Description == "Root"), aes(Group, Abundance, fill = Class)) +
+  geom_bar(stat = "identity", position = position_fill()) + coord_flip() +
+  scale_fill_manual(values = (pal(24))) + 
+  guides(fill = FALSE) +  
+  facet_grid(~ Description, drop = TRUE) +
+  theme(text = element_text(size = 15)) + theme_gray()
+
+plot_grid(Class_root, Class_soil, align = "h", rel_widths = c(1,1.6))
 ```
 
-![](BGM_data_analysis_files/figure-html/unnamed-chunk-7-2.png)<!-- -->
+<img src="BGM_data_analysis_files/figure-html/unnamed-chunk-7-2.png" style="display: block; margin: auto;" />
 
-```r
-(Class_soil <-ggplot(data = filter(BGM.df, Description == "Soil"), aes(Group, Abundance, fill = Class)) +
-  geom_bar(stat = "identity", position = position_fill()) + coord_flip() +
-    scale_fill_manual(values = (pal(24))) + 
-    facet_grid(~ Description, drop = TRUE) +
-   theme(text = element_text(size = 15)) + theme_gray())
-```
-
-![](BGM_data_analysis_files/figure-html/unnamed-chunk-7-3.png)<!-- -->
-
-```r
-(Class_root <-ggplot(data = filter(BGM.df, Description == "Root"), aes(Group, Abundance, fill = Class)) +
-  geom_bar(stat = "identity", position = position_fill()) + coord_flip() +
-    scale_fill_manual(values = (pal(24))) + 
-    facet_grid(~ Description, drop = TRUE) +
-   theme(text = element_text(size = 15)) + theme_gray())
-```
-
-![](BGM_data_analysis_files/figure-html/unnamed-chunk-7-4.png)<!-- -->
+## Metacoder analysis for BGM soil and root samples
 
 
 ```r
 #New variable
 sample_data(BGM_data.f)$site_type <- str_sub(sample_data(BGM_data.f)$Site, 1,2)
 
-library(metacoder)
 #Top 100 OTUs
 
-top100.BGM <- TopNOTUs(BGM_data.f, 100)
+top100.BGM <- TopNOTUs(BGM_data.f, 200)
 top100.BGM.ps <- prune_taxa(top100.BGM, BGM_data.f)
-top100.BGM.ps <- merge_samples(top100.BGM.ps, "Group")
+
 
 #Converting to metacoder
 obj <- parse_phyloseq(top100.BGM.ps)
@@ -210,18 +189,21 @@ obj <- parse_phyloseq(top100.BGM.ps)
 # Convert counts to proportions
 obj$data$otu_table <- calc_obs_props(obj,
                                      data = "otu_table",
-                                     cols = obj$data$sam_data$sample_ids)
+                                     cols = obj$data$sample_data$sample_id)
 # Calculate per-taxon proportions
 obj$data$tax_table <- calc_taxon_abund(obj,
                                        data = "otu_table",
-                                       cols = obj$data$sam_data$sample_ids)
+                                       cols = obj$data$sample_data$sample_id)
 
 #Compare treatments
 obj$data$diff_table <- compare_groups(obj,
                                           data = "tax_table",
-                                          cols = obj$data$sam_data$sample_ids,
-                                          groups = obj$data$sam_data$site_type)
+                                          cols = obj$data$sample_data$sample_id,
+                                          groups = obj$data$sample_data$site_type)
+```
 
+
+```r
 #Tree visual
 set.seed(1)
 Tree1 <- metacoder::heat_tree(taxa::filter_taxa(obj, taxon_names == "c__Agaricomycetes", subtaxa = TRUE),
@@ -235,6 +217,77 @@ Tree1 <- metacoder::heat_tree(taxa::filter_taxa(obj, taxon_names == "c__Agaricom
           edge_color_interval = c(-1, 1),
           node_size_axis_label = "Number of OTUs",
           node_color_axis_label = "Log2 ratio median proportions",
+          title = "Contaminated site vs Adjacent Forest",
+          title_size = 0.03,
           initial_layout = "reingold-tilford", layout = "davidson-harel")
 ```
+
+```
+## Warning: There is no "taxon_id" column in the data set "3", so there are no
+## taxon IDs.
+```
+
+```r
+Tree1
+```
+
+<img src="BGM_data_analysis_files/figure-html/unnamed-chunk-9-1.png" style="display: block; margin: auto;" />
+
+## Funguild analysis of BGM soil and root samples
+
+
+```
+## 78.90977% of taxa assigned a functional guild.
+```
+
+
+```r
+#Assigning guild to the tax table
+new_tax <- data.frame(tax_table(BGM_data.f)) %>% 
+  rownames_to_column(var = "OTU") %>% 
+  left_join(test.assign[,c("OTU","guild")], by = "OTU") %>% 
+  select(OTU, Kingdom, Phylum, Class, Order, Family, guild, Genus, Species) %>% 
+  column_to_rownames(var = "OTU")
+  
+new_tax.0 <- tax_table(as.matrix(new_tax))
+tax_table(BGM_data.f) <- new_tax.0
+```
+
+
+```r
+#Plotting abudance by guild
+#Creating data frame from phyloseq object
+top.BGM <- TopNOTUs(BGM_data.f, 50)
+BGM.df <- prune_taxa(top.BGM, BGM_data.f) %>% psmelt()
+
+#Plot
+pal <- colorRampPalette((brewer.pal(8, "Paired")))
+
+Guild_soil <- ggplot(data = filter(BGM.df, Description == "Soil" & !is.na(guild)), aes(Group, Abundance, fill = guild)) +
+  geom_bar(stat = "identity", position = position_fill()) + coord_flip() +
+  scale_fill_manual(values = pal(16)) + 
+  guides(fill = guide_legend(ncol = 3, keyheight = 0.6)) +
+  facet_grid(~ Description, drop = TRUE) +
+  theme_gray()
+
+Guild_soil.0 <- Guild_soil + theme(legend.position = "none")
+Guild_soil.1 <- Guild_soil + theme(legend.position = "bottom")
+
+Guild_root <- ggplot(data = filter(BGM.df, Description == "Root" & !is.na(guild)), aes(Group, Abundance, fill = guild)) +
+  geom_bar(stat = "identity", position = position_fill()) + coord_flip() +
+  scale_fill_manual(values = pal(16)) + 
+  guides(fill = FALSE) +  
+  facet_grid(~ Description, drop = TRUE) +
+  theme(text = element_text(size = 15)) + theme_gray()
+
+P <- plot_grid(Guild_root, Guild_soil.0, align = "h", rel_heights = c(0.7,0.7))
+ggdraw() + draw_plot(P, 0, 0.2, 1, 0.8) + draw_plot(legend, 0, -0.35, 1, 1, 2)
+```
+
+```
+## Warning: Package `gridGraphics` is required to handle base-R plots.
+## Substituting empty plot.
+```
+
+<img src="BGM_data_analysis_files/figure-html/unnamed-chunk-12-1.png" style="display: block; margin: auto;" />
 
