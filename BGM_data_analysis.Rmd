@@ -136,7 +136,7 @@ Class_root <-ggplot(data = filter(BGM.df, Description == "Root"), aes(Group, Abu
   facet_grid(~ Description, drop = TRUE) +
   theme(text = element_text(size = 15)) + theme_gray()
 
-plot_grid(Class_root, Class_soil, align = "h", rel_widths = c(1,1.6))
+plot_grid(Class_root, Class_soil, align = "h", rel_widths = c(1,1.65))
 ```
 
 ## Metacoder analysis for BGM soil and root samples
@@ -184,7 +184,7 @@ Tree1 <- metacoder::heat_tree(taxa::filter_taxa(obj, taxon_names == "c__Agaricom
           edge_color_interval = c(-1, 1),
           node_size_axis_label = "Number of OTUs",
           node_color_axis_label = "Log2 ratio median proportions",
-          title = "Contaminated site vs Adjacent Forest",
+          title = "Contaminated sites vs Adjacent Forest",
           title_size = 0.03,
           initial_layout = "reingold-tilford", layout = "davidson-harel")
 
