@@ -78,13 +78,13 @@ BGM_data <- subset_taxa(BGM_data0.std, Kingdom != "No blast hit")
 #summarizing by tax rank
 BGM.order <- tax_glom(BGM_data, "Phylum")
 
-plot_bar(BGM_data, fill = "Phylum", x = "Group")
+plot_bar(BGM_data, fill = "Phylum", x = "Group") + theme_gray()
 ```
 
 <img src="BGM_data_analysis_files/figure-html/unnamed-chunk-5-1.png" style="display: block; margin: auto;" />
 
 ```r
-plot_bar(BGM.order, fill = "Phylum", x = "Group")
+plot_bar(BGM.order, fill = "Phylum", x = "Group") + theme_gray()
 ```
 
 <img src="BGM_data_analysis_files/figure-html/unnamed-chunk-5-2.png" style="display: block; margin: auto;" />
@@ -92,7 +92,7 @@ plot_bar(BGM.order, fill = "Phylum", x = "Group")
 ```r
 #Plot by family
 BGM.fam <- tax_glom(BGM_data, "Class")
-plot_bar(BGM.fam, fill = "Class", x = "Group")
+plot_bar(BGM.fam, fill = "Class", x = "Group") + theme_gray()
 ```
 
 <img src="BGM_data_analysis_files/figure-html/unnamed-chunk-5-3.png" style="display: block; margin: auto;" />
@@ -280,13 +280,10 @@ Guild_root <- ggplot(data = filter(BGM.df, Description == "Root" & !is.na(guild)
   facet_grid(~ Description, drop = TRUE) +
   theme(text = element_text(size = 15)) + theme_gray()
 
+legend <- get_legend(Guild_soil.1)
+
 P <- plot_grid(Guild_root, Guild_soil.0, align = "h", rel_heights = c(0.7,0.7))
 ggdraw() + draw_plot(P, 0, 0.2, 1, 0.8) + draw_plot(legend, 0, -0.35, 1, 1, 2)
-```
-
-```
-## Warning: Package `gridGraphics` is required to handle base-R plots.
-## Substituting empty plot.
 ```
 
 <img src="BGM_data_analysis_files/figure-html/unnamed-chunk-12-1.png" style="display: block; margin: auto;" />

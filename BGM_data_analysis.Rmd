@@ -60,17 +60,17 @@ BGM_data <- subset_taxa(BGM_data0.std, Kingdom != "No blast hit")
 
 # Taxa abudance at different rank levels
 
-```{r, fig.width= 10, fig.height=8, fig.align='center'}
+```{r, fig.width= 12, fig.height=6, fig.align='center'}
 #summarizing by tax rank
 BGM.order <- tax_glom(BGM_data, "Phylum")
 
-plot_bar(BGM_data, fill = "Phylum", x = "Group")
+plot_bar(BGM_data, fill = "Phylum", x = "Group") + theme_gray()
 
-plot_bar(BGM.order, fill = "Phylum", x = "Group")
+plot_bar(BGM.order, fill = "Phylum", x = "Group") + theme_gray()
 
 #Plot by family
 BGM.fam <- tax_glom(BGM_data, "Class")
-plot_bar(BGM.fam, fill = "Class", x = "Group")
+plot_bar(BGM.fam, fill = "Class", x = "Group") + theme_gray()
 
 ```
 
@@ -88,7 +88,7 @@ BGM_data.f <- subset_samples(BGM_data, !grepl("SH", sample_data(BGM_data)$Group)
 
 ## Relative abudance of genus and class in BGM soil and root samples
 
-```{r, fig.width= 10, fig.height=8, fig.align='center'}
+```{r, fig.width= 12, fig.height=6, fig.align='center'}
 TopNOTUs <- function(sample,N) {
   names(sort(taxa_sums(sample), TRUE)[1:N])
 }
@@ -170,7 +170,7 @@ obj$data$diff_table <- compare_groups(obj,
                                           groups = obj$data$sample_data$site_type)
 ```
 
-```{r, fig.width= 10, fig.height=8, fig.align='center'}
+```{r, fig.width= 12, fig.height=12, fig.align='center'}
 #Tree visual
 set.seed(1)
 Tree1 <- metacoder::heat_tree(taxa::filter_taxa(obj, taxon_names == "c__Agaricomycetes", subtaxa = TRUE),
@@ -229,7 +229,7 @@ new_tax.0 <- tax_table(as.matrix(new_tax))
 tax_table(BGM_data.f) <- new_tax.0
 ```
 
-```{r, fig.width= 10, fig.height=8, fig.align='center'}
+```{r, fig.width= 12, fig.height=10, fig.align='center'}
 #Plotting abudance by guild
 #Creating data frame from phyloseq object
 top.BGM <- TopNOTUs(BGM_data.f, 50)
@@ -254,6 +254,8 @@ Guild_root <- ggplot(data = filter(BGM.df, Description == "Root" & !is.na(guild)
   guides(fill = FALSE) +  
   facet_grid(~ Description, drop = TRUE) +
   theme(text = element_text(size = 15)) + theme_gray()
+
+legend <- get_legend(Guild_soil.1)
 
 P <- plot_grid(Guild_root, Guild_soil.0, align = "h", rel_heights = c(0.7,0.7))
 ggdraw() + draw_plot(P, 0, 0.2, 1, 0.8) + draw_plot(legend, 0, -0.35, 1, 1, 2)
